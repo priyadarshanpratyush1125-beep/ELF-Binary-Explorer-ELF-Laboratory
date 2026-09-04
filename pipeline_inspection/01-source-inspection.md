@@ -1,16 +1,48 @@
-# Source Code Inspection (.c files)
+# Source Code Inspection .c
+## Objective
 
-## Files Inspected
-- main.c
-- c/src/add.c
-- c/src/sub.c
-- c/src/mul.c
-- c/src/div.c
+Understand the source-level structure of the project before compilation.
 
-avatar@gzb:~/Projects/ELF-Binary-Explorer$ cat main.c
-'''
+At this stage, I am inspecting three related file types:
+```c
+.c  → C source / implementation
+.h  → declarations / interface
+```
+### my goal is to understand:
+
+Where functions are implemented
+Where functions are declared
+Where functions are called
+How .c files use .h files
+How these files are connected before compilation begins
+
+At this stage, I am only inspecting the source code.
+I am not yet looking at preprocessing, assembly, object files, or linking.
+## What I Am Inspecting
+```c
+c/
+├── inc/
+│   ├── add.h
+│   ├── sub.h
+│   ├── mul.h
+│   └── div.h
+│
+└── src/
+    ├── add.c
+    ├── sub.c
+    ├── mul.c
+    └── div.c
+```
+
+For detailed inspection, I am focusing on:
+
+main.c
+add.c
+add.h
+
+avatar@gzb:~/Projects/ELF-Binary-Explorer$ **cat main.c**
+```c
 #include <stdio.h>
-
 #include "add.h"
 #include "sub.h"
 #include "mul.h"
@@ -41,44 +73,52 @@ int main(void)
         case 1:
             printf("Result: %d\n", add(a, b));
             break;
-
         case 2:
             printf("Result: %d\n", sub(a, b));
             break;
-
         case 3:
             printf("Result: %d\n", mul(a, b));
             break;
-
         case 4:
             printf("Result: %d\n", divide(a, b));
             break;
-
         default:
             printf("Invalid choice!\n");
     }
 
     return 0;
-'''
-avatar@gzb:~/Projects/ELF-Binary-Explorer$ cat c/src/add.cc
+}
+```
+avatar@gzb:~/Projects/ELF-Binary-Explorer$ cat c/src/add.c
+```c
 #include "add.h"
 
 int add(int a, int b)
 {
     return a + b;
-}avatar@gzb:~/Projects/ELF-Binary-Explorer$ cat c/src/sub.c
-#include "sub.h"
+}
+```
+avatar@gzb:~/Projects/ELF-Binary-Explorer$ cat c/src/sub.c
+```c
+include "sub.h"
 
 int sub(int a, int b)
 {
     return a - b;
-}avatar@gzb:~/Projects/ELF-Binary-Explorer$ cat c/src/mul.c
+}
+```
+
+avatar@gzb:~/Projects/ELF-Binary-Explorer$ cat c/src/mul.c
+```c
 #include "mul.h"
 
 int mul(int a, int b)
 {
     return a * b;
-}avatar@gzb:~/Projects/ELF-Binary-Explorer$ cat c/src/div.c
+}
+```
+avatar@gzb:~/Projects/ELF-Binary-Explorer$ cat c/src/div.c
+```c
 #include "div.h"
 
 int divide(int a, int b)
@@ -89,89 +129,222 @@ int divide(int a, int b)
     }
 
     return a / b;
+}
+```
+avatar@gzb:~/Projects/ELF-Binary-Explorer$ cat c/inc/add.h
+```c
+#ifndef ADD_H
+#define ADD_H
 
-## Dependencies (gcc -M)
-first create dependencies file (.d) 
-avatar@gzb:~/Projects/ELF-Binary-Explorer$mkdir -p pipeline_inspection/dependenciess
-gcc -M main.c -I c/inc > pipeline_inspection/dependencies/main.d
-gcc -M c/src/add.c -I c/inc > pipeline_inspection/dependencies/add.d
-gcc -M c/src/sub.c -I c/inc > pipeline_inspection/dependencies/sub.d
-gcc -M c/src/mul.c -I c/inc > pipeline_inspection/dependencies/mul.d
-gcc -M c/src/div.c -I c/inc > pipeline_inspection/dependencies/div.d
+int add(int a, int b);
+#endif
+```
+avatar@gzb:~/Projects/ELF-Binary-Explorer$ cat c/inc/sub.h
+```c
+#ifndef SUB_H
+#define SUB_H
 
-# now inspect add.d and main.d
+int sub(int a, int b);
+
+#endif
+```
+avatar@gzb:~/Projects/ELF-Binary-Explorer$ cat c/inc/mul.h
+```c
+#ifndef MUL_H
+#define MUL_H
+
+int mul(int a, int b);
+
+#endif
+```
+avatar@gzb:~/Projects/ELF-Binary-Explorer$ cat c/inc/div.h
+```c
+#ifndef DIV_H
+#define DIV_H
+
+int divide(int a, int b);
+```
+What Is Happening in main.c?
+
+main.c contains the main() function.
+
+int main(void)
+{
+    ...
+}
+
+This is the definition of main() because the function body is present.
+
+Inside main(), the program calls several functions:
+
+printf(...)
+scanf(...)
+add(a, b)
+sub(a, b)
+mul(a, b)
+divide(a, b)
+
+So main.c is both:
+
+main.c
+ ├── defines main()
+ └── calls other functions
+ add() — Declaration, Definition and Call
+
+Declaration — add.h
+int add(int a, int b);      This is a function declaration,There is no function body here ,It tells the compiler
+                                 Function name → add
+                                 Arguments     → int, int
+                                 Return type   → int
+add.h
+└── declaration of add()
+Definition — add.c        
+int add(int a, int b)
+{
+    return a + b;          This is the function definition,Here the actual function body exists "return a + b;"
+}   
+Inside main():  add(a, b)  This is the function call
+```c
+add.h
+  │
+  │ declaration
+  ▼
+main.c
+  │
+  │ call
+  ▼
+add()
+  ▲
+  │
+  │ definition
+  │
+add.c
+```
+main.c does not contain the body of add().
+add.h does not contain the body of add().
+The body is in: c/src/add.c
+
+### when main.c calls:   add(a, b)
+the compiler has already seen the declaration of add().
+
+#include "add.h"(So the compiler knows: add is a function that accepts two integers and returns an integer. The actual implementation is still in add.c.)
 
 
-avatar@gzb:~/Projects/ELF-Binary-Explorer/pipeline_inspection/dependencies$ cat add.d
-add.o: c/src/add.c /usr/include/stdc-predef.h c/inc/add.h
-avatar@gzb:~/Projects/ELF-Binary-Explorer/pipeline_inspection/dependencies$ cat main.d
-main.o: main.c /usr/include/stdc-predef.h /usr/include/stdio.h \
- /usr/include/x86_64-linux-gnu/bits/libc-header-start.h \
- /usr/include/features.h /usr/include/features-time64.h \
- /usr/include/x86_64-linux-gnu/bits/wordsize.h \
- /usr/include/x86_64-linux-gnu/bits/timesize.h \
- /usr/include/x86_64-linux-gnu/sys/cdefs.h \
- /usr/include/x86_64-linux-gnu/bits/long-double.h \
- /usr/include/x86_64-linux-gnu/gnu/stubs.h \
- /usr/include/x86_64-linux-gnu/gnu/stubs-64.h \
- /usr/lib/gcc/x86_64-linux-gnu/15/include/stddef.h \
- /usr/lib/gcc/x86_64-linux-gnu/15/include/stdarg.h \
- /usr/include/x86_64-linux-gnu/bits/types.h \
- /usr/include/x86_64-linux-gnu/bits/typesizes.h \
- /usr/include/x86_64-linux-gnu/bits/time64.h \
- /usr/include/x86_64-linux-gnu/bits/types/__fpos_t.h \
- /usr/include/x86_64-linux-gnu/bits/types/__mbstate_t.h \
- /usr/include/x86_64-linux-gnu/bits/types/__fpos64_t.h \
- /usr/include/x86_64-linux-gnu/bits/types/__FILE.h \
- /usr/include/x86_64-linux-gnu/bits/types/FILE.h \
- /usr/include/x86_64-linux-gnu/bits/types/struct_FILE.h \
- /usr/include/x86_64-linux-gnu/bits/types/cookie_io_functions_t.h \
- /usr/include/x86_64-linux-gnu/bits/stdio_lim.h \
- /usr/include/x86_64-linux-gnu/bits/floatn.h \
- /usr/include/x86_64-linux-gnu/bits/floatn-common.h c/inc/add.h \
- c/inc/sub.h c/inc/mul.h c/inc/div.h
+#include <stdio.h>   This gives the source file access to declarations provided by the standard I/O header.
+For example, main.c calls:
 
- ## Symbol Analysis
- 
-What’s in the Code?
-main.c – The brain. It prints a menu, asks the user for a choice, and calls one of four math functions. It doesn’t know how to add or subtract—it only knows what to call.
+printf(...)
+scanf(...)
 
-add.c, sub.c, mul.c, div.c – The workers. Each contains the actual math logic. They are independent modules.
+But their function bodies are not written inside main.c.
 
-2. Symbols – What’s Defined and What’s Undefined?
-Symbol	         Where is it defined?	                  Where is it used?
-main	         main.c (defined)	                       –
-add	add.c        (defined)	                              Called in main.c
-sub	sub.c        (defined)	                              Called in main.c
-mul	mul.c        (defined)	                              Called in main.c
-divide	         div.c (defined)	                      Called in main.c
-printf	         NOT defined in our code
-                 comes from libc (external)               Called in main.c
-scanf	         NOT defined in our code            
-                 comes from libc (external)           	  Called in main.c
 
-Defined symbols = the actual code we wrote.
 
-Undefined symbols = promises to the linker: “I will find them later from libraries.”
+```c
+Conceptually:
 
-3. Why Do We Need a Linker?
-The compiler compiles main.c and add.c separately. When compiling main.c, the compiler does not know the address of add() – it only knows it exists (because of add.h). So it leaves a placeholder (a relocation entry).
+main.c
+  │
+  │ #include <stdio.h>
+  ▼
+stdio.h
+  │
+  │ declarations
+  ▼
+printf()
+scanf()
+```
 
-The linker’s job is to combine all .o files and replace those placeholders with the real addresses of add, sub, mul, divide (and also printf, scanf from libc).
+### Where Is the Definition of printf()?
+This is an important distinction.
+stdio.h provides the declarations/interface needed by the compiler.
+It does not mean that the complete implementation of printf() is sitting inside your main.c.
 
-4. Key Insight
-The separation of declaration (headers) and definition (.c files) allows us to compile each file independently. The linker is the glue that stitches everything together into a working executable.
+The actual implementation comes from the C standard library provided by the system.
 
-5. must know----
-Q1: Why does main.c include add.h but not add.c?
-A1: The header tells the compiler how to call add. The actual code (.c) is compiled separately and linked later.
+So conceptually:
+```c
+stdio.h
+   │
+   │ declaration
+   ▼
+main.c
+   │
+   │ call
+   ▼
+printf()
+   │
+   │ actual implementation
+   ▼
+C standard library
+```
+## The exact library/runtime details will become much clearer when we inspect the object files and linking stages.
 
-Q2: What would happen if we forgot to link add.o?
-A2: The linker would complain about an undefined reference to add, and the build would fail.
+7. Comparing add() With printf()
 
-Q3: Are printf and scanf also undefined?
-A3: Yes, but the linker finds them in the C standard library (usually libc.so or libc.a) automatically when we use gcc (unless we use -nostdlib).
+The difference is where the implementation lives.
 
-Q4: Why can’t the compiler just put the final addresses of add in main.o?
-A4: Because the final address depends on how the linker arranges the final executable. The compiler cannot know that in advance; that’s why we need relocation.
+For add():  your project → add.c
+For printf(): system C library
+# What I Learned
+.c
+→ contains C source code and function definitions/calls
+.h
+→ contains function declarations/interfaces
 
+Function declaration
+→ tells the compiler about the function
+
+Function definition
+→ contains the actual function body
+
+Function call
+→ uses/invokes the function
+
+For my add() function:
+
+add.h
+→ declaration
+
+add.c
+→ definition
+
+main.c
+→ call
+
+For standard I/O:
+
+stdio.h
+→ declarations for functions such as printf() and scanf()
+
+main.c
+→ calls printf() and scanf()
+
+C standard library
+→ provides their implementation
+```c
+At This Stage: What I Know
+✓ What a .c file contains
+✓ What a .h file contains
+✓ Declaration vs definition vs call
+✓ main.c defines main()
+✓ main.c calls add()
+✓ add.h declares add()
+✓ add.c defines add()
+✓ main.c calls printf() and scanf()
+✓ stdio.h provides their declarations
+✓ printf()/scanf() implementations are provided by the system C library
+✓ #include makes header declarations available to the source file
+
+At This Stage: What I Do NOT Know
+✗ What exactly happens to #include
+✗ What main.c looks like after headers are included
+✗ What add.h looks like after preprocessing
+✗ What printf() and add() look like after compilation
+✗ How C code becomes assembly
+✗ How add.c becomes add.o
+✗ How main.o refers to add()
+✗ How the linker connects main.o with add.o
+✗ How the C library is connected to printf() and scanf()
+ .c file contains C source code.
+```
