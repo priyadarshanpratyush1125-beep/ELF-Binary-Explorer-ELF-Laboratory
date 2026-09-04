@@ -8,6 +8,7 @@
 - c/src/div.c
 
 avatar@gzb:~/Projects/ELF-Binary-Explorer$ cat main.c
+'''
 #include <stdio.h>
 
 #include "add.h"
@@ -58,6 +59,7 @@ int main(void)
     }
 
     return 0;
+'''
 avatar@gzb:~/Projects/ELF-Binary-Explorer$ cat c/src/add.cc
 #include "add.h"
 
