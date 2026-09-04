@@ -15,14 +15,15 @@ The main question is:
 
 What does the source code look like after the header files have been included?
 
-I am inspecting the generated .i files.
-
+I am inspecting the generated .i files
+```c
 .c + .h
    │
    │ preprocessor
    ▼
   .i
-
+```
+```c
 The .i file is still C source code. It is not assembly and it is not machine code.
 What I Am Inspecting
 
@@ -40,6 +41,7 @@ For detailed inspection, I am focusing on:
 
 main.i
 add.i
+```
 avatar@gzb:~/Projects/ELF-Binary-Explorer$ cat pipeline_inspection/preprocess/add.i
 ```c
 # 0 "c/src/add.c"
@@ -123,14 +125,12 @@ int divide(int a, int b)
     return a / b;
 }
 ```
-
+```c
 Inspecting add.i
 What changed?
-
 Original add.c:
 
 #include "add.h"
-
 int add(int a, int b)
 {
     return a + b;
@@ -139,7 +139,6 @@ int add(int a, int b)
 After preprocessing:
 
 int add(int a, int b);
-
 int add(int a, int b)
 {
     return a + b;
@@ -154,30 +153,22 @@ The important observation is:
 int add(int a, int b);
 
 The contents of add.h have been inserted into the preprocessed source.
-
+```
 2. Connecting add.h → add.c → add.i
-
-Original header:
-
-// add.h
-
+```c
+Original header (add.h)
 int add(int a, int b);
 
-Original source:
-
-// add.c
-
+Original source(add.c)
 #include "add.h"
-
 int add(int a, int b)
 {
     return a + b;
 }
 
-After preprocessing:
+Now see after preprocessing:
 
 int add(int a, int b);
-
 int add(int a, int b)
 {
     return a + b;
@@ -192,80 +183,35 @@ definition
 The important point:
 
 The preprocessor does not move the function implementation from add.c somewhere else. It processes the #include and produces a preprocessed translation unit containing the header contents and the original source.
-
+```
+```c
 3. Preprocessor Line Markers
 
 The .i file contains lines such as:
-
 # 1 "c/src/add.c"
 # 1 "c/inc/add.h" 1
 ...
 # 2 "c/src/add.c" 2
 
-These are preprocessor line markers.
+These are preprocessor line markers,They tell the compiler where the following source text originally came from
+For example: # 1 "c/inc/add.h" 1 this line means this comes from c/inc/add.h
+```
+## Inspecting main.i
 
-They tell the compiler where the following source text originally came from.
-
-For example:
-
-# 1 "c/inc/add.h" 1
-
-means that the following lines came from:
-
-c/inc/add.h
-
-Then:
-
-# 2 "c/src/add.c" 2
-
-indicates that processing has returned to:
-
-c/src/add.c
-
-For this project, these markers provide visible evidence that add.h was included while preprocessing add.c.
-
-4. Inspecting main.i
-
-Command:
-
-cat pipeline_inspection/preprocess/main.i
-
+Command: cat pipeline_inspection/preprocess/main.i
+```
 The complete output is very large because main.c includes:
 
-#include <stdio.h>
-
-and stdio.h includes many other system headers.
-
-I do not need to paste the entire file into my learning notes.
-
-I will extract the useful parts.
-
-stdio.h Was Included
-
-In main.i, I can see:
-
-# 1 "/usr/include/stdio.h" 1 3 4
-
-This shows that the preprocessor entered:
-
-/usr/include/stdio.h
-
+#include <stdio.h> and stdio.h includes many other system headers
+I do not need to paste the entire file into my learning notes.I will extract the useful parts.
+stdio.h Was Included ,In main.i, I can see:  # 1 "/usr/include/stdio.h" 1 3 4  This shows that the preprocessor entered:/usr/include/stdio.h
 Then many other system headers appear because stdio.h itself includes additional headers.
-
 For example:
-
 /usr/include/features.h
 /usr/include/x86_64-linux-gnu/bits/types.h
 /usr/lib/gcc/x86_64-linux-gnu/15/include/stddef.h
-...
-
-This explains why main.i is much larger than main.c.
-printf() Declaration in main.i
-
-One useful part of main.i is:
 
 extern int printf (const char *__restrict __format, ...);
-
 This came from the included stdio.h.
 
 Therefore:
@@ -282,7 +228,7 @@ extern int printf(...);
 
 So after preprocessing, the declaration of printf() is present in the .i file.
 
-6. scanf() Declaration in main.i
+ scanf() Declaration in main.i
 
 Another useful part is:
 
@@ -307,8 +253,10 @@ main.i
    │ used by
    ▼
 main.c
-7. Project Headers in main.i
+```
 
+##  Project Headers in main.i
+```c
 Near the end of main.i, I can see:
 
 # 1 "c/inc/add.h" 1
@@ -337,11 +285,10 @@ The original:
 #include "div.h"
 
 has resulted in their declarations appearing in the .i file.
-
-8. main() Is Still Present
-
+```
+## Note ----> main() Is Still Present
+```c
 After the included headers, main.i contains the original program:
-
 int main(void)
 {
     int a = 20;
@@ -360,14 +307,10 @@ add(a, b);
 sub(a, b);
 mul(a, b);
 divide(a, b);
-
-This is important.
-
 The preprocessor has not converted these calls into assembly instructions.
+*********They are still C statements************.
 
-They are still C statements.
-
-9. Useful main.i Structure
+ Useful main.i Structure
 
 For learning, I can reduce the huge main.i conceptually to:
 
@@ -396,138 +339,8 @@ original main.c
              └── divide() call
 
 This is the useful information hidden inside the large .i file.
-
-10. Compare .c With .i
-Original add.c
-#include "add.h"
-
-int add(int a, int b)
-{
-    return a + b;
-}
-Preprocessed add.i
-int add(int a, int b);
-
-int add(int a, int b)
-{
-    return a + b;
-}
-
-The major visible change is:
-
-#include "add.h"
-        ↓
-header contents appear in the .i file
-Original main.c
-#include <stdio.h>
-#include "add.h"
-#include "sub.h"
-#include "mul.h"
-#include "div.h"
-
-int main(void)
-{
-    ...
-}
-Important parts visible in main.i
-extern int printf(...);
-
-extern int scanf(...);
-
-int add(int a, int b);
-
-int sub(int a, int b);
-
-int mul(int a, int b);
-
-int divide(int a, int b);
-
-int main(void)
-{
-    ...
-}
-
-The complete .i contains much more system-header content, but these are the parts relevant to understanding my project.
-
-11. Why Is main.i So Large?
-
-My original main.c is small.
-
-But:
-
-#include <stdio.h>
-
-causes the preprocessor to process stdio.h.
-
-stdio.h itself includes other headers.
-
-Those headers can include more headers.
-
-So the relationship becomes:
-
-main.c
-  │
-  ├── stdio.h
-  │     │
-  │     ├── other system headers
-  │     │       │
-  │     │       └── more declarations
-  │     │
-  │     └── printf(), scanf(), etc.
-  │
-  ├── add.h
-  ├── sub.h
-  ├── mul.h
-  └── div.h
-
-That is why:
-
-main.c → small
-main.i → much larger
-
-The .i file contains the result of preprocessing all of these included headers.
-
-12. .i Is Still C
-
-This is an important point.
-
-The .i file still contains:
-
-int main(void)
-{
-    ...
-}
-
-and:
-
-int add(int a, int b)
-{
-    return a + b;
-}
-
-It also contains declarations such as:
-
-int add(int a, int b);
-
-It does not contain x86-64 assembly instructions such as:
-
-mov
-add
-call
-ret
-
-Those appear in the next stage.
-
-So:
-
-.c
- ↓
-preprocessor
- ↓
-.i
-
-is still within the C source representation.
-
+```
+```c
 What I Learned
 ✓ The preprocessor processes #include directives
 ✓ The contents of project headers appear in the .i file
@@ -570,6 +383,8 @@ main.i
    ├── mul() declaration
    ├── divide() declaration
    └── main() + original program code
+```
+```c
 At This Stage: What I Know
 ✓ What a .i file is
 ✓ Why .i files are larger than .c files
@@ -580,6 +395,7 @@ At This Stage: What I Know
 ✓ That header contents become part of the preprocessed source
 ✓ That .i is still C source code
 ✓ That preprocessing happens before compilation
+
 At This Stage: What I Do NOT Know
 ✗ How C statements become assembly instructions
 ✗ How int variables are represented in assembly
@@ -590,3 +406,4 @@ At This Stage: What I Do NOT Know
 ✗ What @PLT means in a function call
 ✗ What an ELF .o file contains
 ✗ How symbols and relocations work
+```
