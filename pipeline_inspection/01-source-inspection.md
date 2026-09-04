@@ -98,6 +98,8 @@ gcc -M c/src/mul.c -I c/inc > pipeline_inspection/dependencies/mul.d
 gcc -M c/src/div.c -I c/inc > pipeline_inspection/dependencies/div.d
 
 # now inspect add.d and main.d
+
+
 avatar@gzb:~/Projects/ELF-Binary-Explorer/pipeline_inspection/dependencies$ cat add.d
 add.o: c/src/add.c /usr/include/stdc-predef.h c/inc/add.h
 avatar@gzb:~/Projects/ELF-Binary-Explorer/pipeline_inspection/dependencies$ cat main.d
